@@ -1,0 +1,37 @@
+services:
+  live-trading:
+    build:
+      context: .
+      dockerfile: Dockerfile.live
+    environment:
+      - COINBASE_LIVE_API_KEY=${COINBASE_LIVE_API_KEY}
+      - COINBASE_LIVE_API_SECRET=${COINBASE_LIVE_API_SECRET}
+    volumes:
+      - .:/app
+
+  backtesting:
+    build:
+      context: .
+      dockerfile: Dockerfile.backtest
+    environment:
+      - START_DATE=${START_DATE:-2023-01-01}
+      - END_DATE=${END_DATE:-2023-12-31}
+      - COINBASE_SANDBOX_API_KEY=${COINBASE_SANDBOX_API_KEY}
+      - COINBASE_SANDBOX_API_SECRET=${COINBASE_SANDBOX_API_SECRET}
+      - COINBASE_SANDBOX_PASSPHRASE=${COINBASE_SANDBOX_PASSPHRASE}
+    volumes:
+      - .:/app
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.api
+    ports:
+      - "8000:8000" 

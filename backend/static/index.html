@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backtesting Results</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <h1>Backtesting Results</h1>
+    <h2>Live Trading Results (Actual)</h2>
+    <div id="live-actual-plot"></div>
+    <h2>Live Trading Results (Virtual)</h2>
+    <div id="live-virtual-plot"></div>
+    <h2>Backtesting Results</h2>
+    <div id="backtesting-plot"></div>
+    <script>
+        async function fetchAndPlot(url, plotId, title) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                const trace = {
+                    x: data.dates,  // Assuming the data structure
+                    y: data.values, // Assuming the data structure
+                    type: 'scatter'
+                };
+                const layout = {
+                    title: title,
+                    xaxis: { title: 'Date' },
+                    yaxis: { title: 'Value' }
+                };
+                Plotly.newPlot(plotId, [trace], layout);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        fetchAndPlot('http://localhost:8000/backtesting-results', 'backtesting-plot', 'Backtesting Results');
+        fetchAndPlot('http://localhost:8000/live-trading-results/actual', 'live-actual-plot', 'Live Trading Results (Actual)');
+        fetchAndPlot('http://localhost:8000/live-trading-results/virtual', 'live-virtual-plot', 'Live Trading Results (Virtual)');
+    </script>
+</body>
+</html> 

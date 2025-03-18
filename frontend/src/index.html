@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backtesting Results</title>
+    <script src="https://cdn.plot.ly/plotly-2.29.1.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .plot-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 1;
+        }
+
+        .plot-container h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.5em;
+        }
+
+        #comparison-plot, #backtesting-plot {
+            width: 100%;
+            height: 400px;
+            min-height: 400px;
+            position: relative;
+            z-index: 2;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+        }
+
+        input[type="date"] {
+            padding: 7px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+        }
+
+        .trade-history {
+            margin-top: 20px;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .summary-box {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .summary-item {
+            padding: 10px;
+            border-radius: 4px;
+            background-color: white;
+        }
+        .profit {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .loss {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        h1, h2 {
+            color: #343a40;
+            margin-top: 30px;
+        }
+
+        .controls.loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .controls.loading button {
+            background-color: #6c757d;
+            position: relative;
+            padding-right: 40px;
+        }
+
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        @keyframes spin {
+            0% { transform: translateY(-50%) rotate(0deg); }
+            100% { transform: translateY(-50%) rotate(360deg); }
+        }
+
+        .plot-container.loading {
+            position: relative;
+        }
+
+        .plot-container.loading::after {
+            content: "Loading...";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Backtesting Results</h1>
+    
+    <div class="controls">
+        <select id="symbol-select">
+            <option value="BTC/USDT">BTC/USDT</option>
+            <option value="ETH/USDT">ETH/USDT</option>
+            <option value="LTC/USDT">LTC/USDT</option>
+            <option value="XRP/USDT">XRP/USDT</option>
+            <option value="ADA/USDT">ADA/USDT</option>
+        </select>
+        <input type="date" id="start-date" value="2023-01-01">
+        <input type="date" id="end-date" value="2023-12-31">
+        <button onclick="runBacktest()">Run Backtest<div class="spinner"></div></button>
+    </div>
+
+    <div class="plot-container">
+        <h2>Performance Comparison</h2>
+        <div id="comparison-plot"></div>
+    </div>
+
+    <div class="plot-container">
+        <h2>Portfolio Performance</h2>
+        <div id="backtesting-plot"></div>
+    </div>
+    
+    <h2>Trading Summary</h2>
+    <div id="trading-summary" class="summary-box"></div>
+    
+    <h2>Trade History</h2>
+    <div id="trade-history"></div>
+
+    <script>
+        const BACKEND_URL = 'http://localhost:8000';
+        let isBacktesting = false;
+
+        function setLoadingState(loading) {
+            isBacktesting = loading;
+            const controls = document.querySelector('.controls');
+            const plotContainers = document.querySelectorAll('.plot-container');
+            const spinner = document.querySelector('.spinner');
+            const button = document.querySelector('button');
+            
+            if (loading) {
+                controls.classList.add('loading');
+                plotContainers.forEach(container => container.classList.add('loading'));
+                spinner.style.display = 'block';
+                button.disabled = true;
+            } else {
+                controls.classList.remove('loading');
+                plotContainers.forEach(container => container.classList.remove('loading'));
+                spinner.style.display = 'none';
+                button.disabled = false;
+            }
+        }
+
+        async function runBacktest() {
+            if (isBacktesting) return;
+            
+            console.log('Starting backtest...');
+            const symbol = document.getElementById('symbol-select').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            
+            console.log('Selected parameters:', { symbol, startDate, endDate });
+            
+            // Validate dates
+            if (!startDate || !endDate) {
+                alert('Please select both start and end dates');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                alert('Start date must be before end date');
+                return;
+            }
+
+            setLoadingState(true);
+            
+            try {
+                const results = await fetchBacktestResults(symbol, startDate, endDate);
+                console.log('Backtest results:', results);
+                if (results) {
+                    console.log('Plotting results...');
+                    plotPortfolioValue(results);
+                    plotComparison(results);
+                    await fetchAndDisplayTradeHistory();
+                } else {
+                    console.error('No results returned from backtest');
+                }
+            } catch (error) {
+                console.error('Error during backtest:', error);
+                alert('An error occurred during the backtest. Please try again.');
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        async function fetchBacktestResults(symbol, startDate, endDate) {
+            console.log('Fetching backtest results for symbol:', symbol);
+            try {
+                const params = new URLSearchParams({
+                    symbol: symbol,
+                    start_date: startDate,
+                    end_date: endDate
+                });
+                const url = `${BACKEND_URL}/backtesting-results?${params}`;
+                console.log('Fetching from URL:', url);
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                    mode: 'cors'
+                });
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log('Received data:', data);
+                return data;
+            } catch (error) {
+                console.error('Error fetching backtest results:', error);
+                return null;
+            }
+        }
+
+        function plotPortfolioValue(data) {
+            console.log('Plotting portfolio value with data:', data);
+            if (!data || !data.dates || !data.values) {
+                console.error('Invalid data for portfolio plot:', data);
+                return;
+            }
+            const trace = {
+                x: data.dates,
+                y: data.values,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Portfolio Value',
+                line: {
+                    color: '#007bff',
+                    width: 2
+                }
+            };
+            const layout = {
+                title: 'Portfolio Value Over Time',
+                xaxis: { 
+                    title: 'Date',
+                    gridcolor: '#f5f5f5',
+                    showgrid: true
+                },
+                yaxis: { 
+                    title: 'Portfolio Value ($)',
+                    gridcolor: '#f5f5f5',
+                    showgrid: true
+                },
+                plot_bgcolor: 'white',
+                paper_bgcolor: 'white',
+                showlegend: true
+            };
+            Plotly.newPlot('backtesting-plot', [trace], layout);
+        }
+
+        function plotComparison(data) {
+            console.log('Starting plotComparison with data:', data);
+            if (!data) {
+                console.error('No data provided to plotComparison');
+                return;
+            }
+
+            // Clear the plot container first
+            const plotContainer = document.getElementById('comparison-plot');
+            console.log('Plot container:', plotContainer);
+            if (!plotContainer) {
+                console.error('Could not find comparison-plot element');
+                return;
+            }
+            plotContainer.innerHTML = '';
+            
+            // Validate data arrays
+            if (!data.dates || !Array.isArray(data.dates)) {
+                console.error('Invalid or missing dates array:', data.dates);
+                return;
+            }
+            if (!data.portfolio_normalized || !Array.isArray(data.portfolio_normalized)) {
+                console.error('Invalid or missing portfolio_normalized array:', data.portfolio_normalized);
+                return;
+            }
+
+            console.log('Data validation passed. Array lengths:', {
+                dates: data.dates.length,
+                portfolio: data.portfolio_normalized.length,
+                btc: data.btc_normalized?.length,
+                sp500: data.sp500_normalized?.length
+            });
+
+            // Create base trace for portfolio
+            const traces = [];
+            
+            // Add portfolio trace
+            if (data.portfolio_normalized && data.portfolio_normalized.length > 0) {
+                console.log('Adding portfolio trace with first 5 values:', data.portfolio_normalized.slice(0, 5));
+                traces.push({
+                    x: data.dates,
+                    y: data.portfolio_normalized,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Strategy',
+                    line: {
+                        color: '#007bff',
+                        width: 2
+                    }
+                });
+            }
+
+            // Add BTC trace if data exists
+            if (data.btc_normalized && data.btc_normalized.length > 0) {
+                console.log('Adding BTC trace with first 5 values:', data.btc_normalized.slice(0, 5));
+                traces.push({
+                    x: data.dates,
+                    y: data.btc_normalized,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'BTC/USDT',
+                    line: {
+                        color: '#f7931a',
+                        width: 2
+                    }
+                });
+            }
+
+            // Add S&P 500 trace if data exists
+            if (data.sp500_normalized && data.sp500_normalized.length > 0) {
+                console.log('Adding S&P 500 trace with first 5 values:', data.sp500_normalized.slice(0, 5));
+                traces.push({
+                    x: data.dates,
+                    y: data.sp500_normalized,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'S&P 500',
+                    line: {
+                        color: '#21ce99',
+                        width: 2
+                    }
+                });
+            }
+
+            console.log('Final traces array:', JSON.stringify(traces, null, 2));
+
+            const layout = {
+                title: 'Performance Comparison (Normalized)',
+                xaxis: { 
+                    title: 'Date',
+                    gridcolor: '#f5f5f5',
+                    showgrid: true,
+                    type: 'date'
+                },
+                yaxis: { 
+                    title: 'Normalized Value (%)',
+                    gridcolor: '#f5f5f5',
+                    showgrid: true
+                },
+                plot_bgcolor: 'white',
+                paper_bgcolor: 'white',
+                showlegend: true,
+                height: 400,
+                margin: { t: 50, r: 50, b: 50, l: 50 }
+            };
+
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToAdd: ['hoverClosestGl2d']
+            };
+
+            try {
+                console.log('Creating plot with:', {
+                    tracesCount: traces.length,
+                    layout: JSON.stringify(layout, null, 2),
+                    config: JSON.stringify(config, null, 2)
+                });
+                Plotly.newPlot('comparison-plot', traces, layout, config);
+                console.log('Plot created successfully');
+            } catch (error) {
+                console.error('Error creating plot:', error);
+                console.log('Attempting simplified plot...');
+                try {
+                    Plotly.newPlot('comparison-plot', traces);
+                    console.log('Simplified plot created successfully');
+                } catch (fallbackError) {
+                    console.error('Even simplified plot failed:', fallbackError);
+                }
+            }
+        }
+
+        async function fetchAndDisplayTradeHistory() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/trade-history`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                    mode: 'cors'
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                displayTradeHistory(data);
+            } catch (error) {
+                console.error('Error fetching trade history:', error);
+            }
+        }
+
+        function displayTradeHistory(data) {
+            // Display summary
+            const summary = data.summary;
+            const summaryHtml = `
+                <div class="summary-item">
+                    <h3>Total Trades: ${summary.total_trades}</h3>
+                    <p>Winning Trades: ${summary.winning_trades}</p>
+                    <p>Losing Trades: ${summary.losing_trades}</p>
+                </div>
+                <div class="summary-item">
+                    <h3>Win Rate</h3>
+                    <p>${(summary.win_rate * 100).toFixed(2)}%</p>
+                </div>
+                <div class="summary-item">
+                    <h3>Average Trade</h3>
+                    <p class="${summary.avg_trade >= 0 ? 'profit' : 'loss'}">
+                        ${summary.avg_trade >= 0 ? '+' : ''}${summary.avg_trade.toFixed(2)}%
+                    </p>
+                </div>
+                <div class="summary-item">
+                    <h3>Max Drawdown</h3>
+                    <p class="loss">${summary.max_drawdown.toFixed(2)}%</p>
+                </div>
+            `;
+            document.getElementById('trading-summary').innerHTML = summaryHtml;
+
+            // Display trade history
+            const trades = data.trades;
+            let tableHtml = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Price</th>
+                            <th>Size</th>
+                            <th>Profit/Loss</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            trades.forEach(trade => {
+                const profitLossClass = trade.profit_loss >= 0 ? 'profit' : 'loss';
+                tableHtml += `
+                    <tr>
+                        <td>${trade.date}</td>
+                        <td>${trade.type}</td>
+                        <td>$${trade.price.toFixed(2)}</td>
+                        <td>${trade.size}</td>
+                        <td class="${profitLossClass}">
+                            ${trade.profit_loss >= 0 ? '+' : ''}${trade.profit_loss.toFixed(2)}%
+                        </td>
+                    </tr>
+                `;
+            });
+            tableHtml += '</tbody></table>';
+            document.getElementById('trade-history').innerHTML = tableHtml;
+        }
+
+        // Run backtest on page load
+        document.addEventListener('DOMContentLoaded', runBacktest);
+    </script>
+</body>
+</html> 

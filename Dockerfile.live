@@ -1,0 +1,22 @@
+# Dockerfile.live
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# Set working directory
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the application code
+COPY . /app/
+
+# Set environment variables for live trading
+ENV TRADING_MODE=live
+
+# Run the trading bot
+CMD ["python", "backend/trading_bot.py"] 
